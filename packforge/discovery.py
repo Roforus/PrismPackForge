@@ -14,12 +14,14 @@ from pathlib import Path
 
 from .common import json_bytes
 
-PRIORITY = {"prism": 0, "legacy": 1, "tlauncher": 2}
-NAMES = {"prism": "Prism Launcher", "legacy": "Legacy Launcher", "tlauncher": "TLauncher"}
+PRIORITY = {"prism": 0, "legacy": 1, "tlauncher": 2, "multimc":3, "minecraft":4}
+NAMES = {"prism": "Prism Launcher", "legacy": "Legacy Launcher", "tlauncher": "TLauncher",
+         "multimc":"MultiMC", "minecraft":"Minecraft Launcher"}
 DOWNLOADS = {
     "prism": "https://prismlauncher.org/download/windows/",
     "legacy": "https://llaun.ch/en",
     "tlauncher": "https://tlauncher.org/en/install-on-windows.html",
+    "multimc":"https://multimc.org/", "minecraft":"https://www.minecraft.net/download",
 }
 
 
@@ -75,15 +77,17 @@ def _read_json(path: Path, default):
 
 def installation_at(destination: Path, pack_id: str, launcher: str | None = None) -> Installation | None:
     destination = destination.resolve()
-    for game in (destination, destination / ".minecraft", destination / "minecraft"):
+    for game in (destination, destination / ".minecraft", destination / "minecraft", destination/'packforge'/pack_id):
         state = _read_json(game / ".packforge/state.json", {})
         if not isinstance(state, dict) or state.get("id") != pack_id:
             continue
         kind = state.get("launcher")
         if kind not in PRIORITY or (launcher is not None and kind != launcher):
             continue
-        actual_destination = game.parent if kind == "prism" and game.name in (".minecraft", "minecraft") else game
-        if kind == "prism" and not (actual_destination / "mmc-pack.json").is_file():
+        actual_destination = game.parent if kind in ('prism','multimc') and game.name in (".minecraft", "minecraft") else game
+        if kind == 'minecraft' and game.parent.name == 'packforge':
+            actual_destination = game.parent.parent
+        if kind in ('prism','multimc') and not (actual_destination / "mmc-pack.json").is_file():
             continue
         return Installation(pack_id, str(state.get("version", "?")), kind, actual_destination)
     return None
@@ -114,6 +118,10 @@ def launcher_kind(path: Path) -> str | None:
         return None
     if name.startswith("prismlauncher"):
         return "prism"
+    if name.startswith('multimc'):
+        return 'multimc'
+    if name.replace(' ','').startswith('minecraftlauncher'):
+        return 'minecraft'
     if name.startswith(("legacylauncher", "tl_legacy", "tllegacy")):
         return "legacy"
     if name.startswith("tlauncher"):
@@ -141,7 +149,7 @@ def _registry_paths() -> list[Path]:
                                         if isinstance(value, str):
                                             values[name] = value
                                     text = " ".join(values.get(k, "") for k in ("DisplayName", "", "DisplayIcon"))
-                                    if not any(n in text.lower().replace(" ", "") for n in ("prismlauncher", "legacylauncher", "tlauncher")):
+                                    if not any(n in text.lower().replace(" ", "") for n in ("prismlauncher", "legacylauncher", "tlauncher",'multimc','minecraftlauncher')):
                                         continue
                                     for name in ("InstallLocation", "DisplayIcon", ""):
                                         value = values.get(name, "").strip()
@@ -156,10 +164,10 @@ def _registry_paths() -> list[Path]:
     return result
 
 
-def _prism_instances(data: Path) -> Path:
+def _prism_instances(data: Path, filename='prismlauncher.cfg') -> Path:
     config = configparser.ConfigParser(interpolation=None, strict=False)
     try:
-        config.read(data / "prismlauncher.cfg", encoding="utf-8")
+        config.read(data / filename, encoding="utf-8")
         value = config.get("General", "InstanceDir", fallback="instances")
         path = Path(os.path.expandvars(value))
         return (data / path).resolve() if not path.is_absolute() else path.resolve()
@@ -195,11 +203,11 @@ def detect_launchers(*, home: Path | None = None, env: dict | None = None,
              *program_roots]
     candidates = [Path(p) for p in portable_paths]
     candidates.extend(_registry_paths() if registered is None else registered)
-    for command in ("prismlauncher.exe", "LegacyLauncher.exe", "TLauncher.exe"):
+    for command in ("prismlauncher.exe", "LegacyLauncher.exe", "TLauncher.exe", 'MultiMC.exe','MinecraftLauncher.exe'):
         executable = shutil.which(command, path=env.get("PATH", ""))
         if executable:
             candidates.append(Path(executable))
-    folders = ("PrismLauncher", "Prism Launcher", "LegacyLauncher", "Legacy Launcher", "TLauncher", ".tlauncher", ".minecraft")
+    folders = ("PrismLauncher", "Prism Launcher", "LegacyLauncher", "Legacy Launcher", "TLauncher", ".tlauncher", ".minecraft", 'MultiMC', 'Minecraft Launcher')
     for root in roots:
         candidates.append(root)
         candidates.extend(root / folder for folder in folders)
@@ -220,9 +228,10 @@ def detect_launchers(*, home: Path | None = None, env: dict | None = None,
         if not kind or kind in seen:
             continue
         executable = executable.resolve()
-        if kind == "prism":
-            data = executable.parent if (executable.parent / "prismlauncher.cfg").is_file() else app / "PrismLauncher"
-            instances = _prism_instances(data)
+        if kind in ('prism','multimc'):
+            filename = 'multimc.cfg' if kind == 'multimc' else 'prismlauncher.cfg'
+            data = executable.parent if (executable.parent / filename).is_file() or kind == 'multimc' else app / "PrismLauncher"
+            instances = _prism_instances(data,filename)
             games = (instances,)
         else:
             instances = None

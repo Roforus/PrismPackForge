@@ -70,6 +70,40 @@ class PackTests(unittest.TestCase):
         self.export()
         self.assertIn("options.txt", [f["path"] for f in read_manifest(self.bundle)["files"]])
 
+    def test_export_game_folder_from_another_launcher(self):
+        export_pack(self.game,self.bundle,pack_id='other',name='Other',version='1',
+                    minecraft='1.21.1',loader='NeoForge',loader_version='21.1.1',
+                    resolver=FakeResolver(),log=lambda _:None)
+        manifest = read_manifest(self.bundle)
+        self.assertEqual(manifest['minecraft'],'1.21.1')
+        self.assertEqual(manifest['loaders'],[{'name':'NeoForge','version':'21.1.1'}])
+
+    def test_game_folder_requires_explicit_runtime(self):
+        with self.assertRaises(PackError):
+            export_pack(self.game,self.bundle,pack_id='other',name='Other',version='1')
+
+    def test_multimc_target_uses_instance_format(self):
+        self.export()
+        self.install('multimc')
+        self.prepare_runtime.assert_not_called()
+        self.assertTrue((self.destination/'mmc-pack.json').is_file())
+        self.assertEqual((self.destination/'.minecraft/options.txt').read_text(),'music:0.5')
+
+    def test_official_launcher_keeps_existing_profiles_and_isolates_game(self):
+        self.export()
+        self.destination.mkdir()
+        profiles = self.destination/'launcher_profiles.json'
+        profiles.write_text(json.dumps({'profiles':{'existing':{'name':'Existing'}},'settings':{'custom':True}}))
+        self.install('minecraft')
+        updated = json.loads(profiles.read_text())
+        self.assertEqual(updated['profiles']['existing'],{'name':'Existing'})
+        self.assertEqual(updated['settings'],{'custom':True})
+        self.assertEqual(updated['profiles']['packforge-test']['lastVersionId'],'fabric-loader-0.16.9-1.20.1')
+        self.assertTrue((self.destination/'packforge/test/mods/a.jar').is_file())
+        self.assertFalse((self.destination/'mods').exists())
+        from packforge.discovery import installation_at
+        self.assertEqual(installation_at(self.destination,'test').launcher,'minecraft')
+
     def test_export_requires_options(self):
         (self.game / "options.txt").unlink()
         with self.assertRaisesRegex(PackError, 'options.txt'):

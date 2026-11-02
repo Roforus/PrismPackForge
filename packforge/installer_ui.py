@@ -76,7 +76,7 @@ def main(bundle: Path | None = None):
     for column, kind in enumerate(NAMES):
         label = NAMES[kind] + (" — рекомендуется" if kind == "prism" else "")
         ttk.Button(downloads, text=label, command=lambda k=kind: webbrowser.open(DOWNLOADS[k])).grid(
-            row=0, column=column, padx=4)
+            row=column//3, column=column%3, padx=4, pady=4)
 
     def change(_event=None):
         choice = choices.get(selection.get())
@@ -91,7 +91,7 @@ def main(bundle: Path | None = None):
         else:
             status.set(f"Новая установка: {NAMES[kind]}. Приоритет: Prism → Legacy → TLauncher.")
             window.button.configure(text="Установить сборку")
-        if kind == "prism":
+        if kind in ('prism','multimc'):
             instruction.set("Укажите НОВУЮ папку экземпляра внутри каталога instances Prism. "
                             "Для обновления выберите папку предыдущей установки. "
                             "При нестандартном или portable Prism выберите путь вручную. "
@@ -103,6 +103,10 @@ def main(bundle: Path | None = None):
                             "После установки перезапустите лаунчер и выберите версию, указанную в журнале. "
                             "Путь должен совпадать с настройками лаунчера. В Legacy отключите разделение по подпапкам; "
                             "для сборки задайте отдельную игровую папку.")
+            if kind == 'minecraft':
+                instruction.set('Укажите корневую .minecraft официального лаунчера. Версия игры и загрузчик '
+                                'установятся автоматически. Будет создан отдельный профиль и игровая папка packforge/'+manifest['id']+
+                                '. После установки откройте вкладку «Установки», включите модифицированные версии и выберите профиль сборки.')
     combo.bind("<<ComboboxSelected>>", change)
 
     def apply_scan(result):
@@ -113,7 +117,7 @@ def main(bundle: Path | None = None):
         for launcher in result.launchers:
             recommended = launcher == result.recommended_launcher
             label = f"Установить: {launcher.name}" + (" (рекомендуется)" if recommended else "")
-            if launcher.kind == "prism":
+            if launcher.kind in ('prism','multimc'):
                 default = launcher.instances_dir / manifest["id"]
             else:
                 default = launcher.game_roots[0]

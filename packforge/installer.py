@@ -72,7 +72,7 @@ def install(bundle: Path, destination: Path, launcher: str, *, replace_options: 
             log=print, downloader=fetch_file) -> dict:
     """Stage and verify everything before committing; roll back a failed commit."""
     manifest = read_manifest(bundle)
-    if launcher not in ("prism", "legacy", "tlauncher"):
+    if launcher not in ("prism", "legacy", "tlauncher", 'multimc', 'minecraft'):
         raise PackError("Неизвестный лаунчер")
     root = destination.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -89,13 +89,15 @@ def install(bundle: Path, destination: Path, launcher: str, *, replace_options: 
 
 
 def _install_locked(bundle, root, launcher, manifest, replace_options, log, downloader):
-    if launcher == "prism":
+    if launcher in ('prism','multimc'):
         dirs = [p for p in (root / "minecraft", root / ".minecraft") if p.exists()]
         if len(dirs) > 1:
             raise PackError("В экземпляре есть и minecraft, и .minecraft. Выберите корректный экземпляр")
         game = dirs[0] if dirs else root / ".minecraft"
         if game.is_symlink() or (hasattr(game, "is_junction") and game.is_junction()):
             raise PackError("Папка игры не должна быть ссылкой")
+    elif launcher == 'minecraft':
+        game = target_path(root, f"packforge/{manifest['id']}")
     else:
         game = root
     game.mkdir(parents=True, exist_ok=True)
@@ -105,7 +107,7 @@ def _install_locked(bundle, root, launcher, manifest, replace_options, log, down
         raise PackError("В этой папке установлена другая сборка. Выберите отдельную папку")
     if not old and not any(f["path"] == "options.txt" for f in manifest["files"]):
         raise PackError("Для первой установки необходим options.txt. Перевыгрузите сборку обновлённой утилитой")
-    if launcher == "prism" and not old and any((root / p).exists() for p in ("mmc-pack.json", "instance.cfg")):
+    if launcher in ('prism','multimc') and not old and any((root / p).exists() for p in ("mmc-pack.json", "instance.cfg")):
         raise PackError("Выберите новую папку экземпляра Prism; существующий экземпляр не управляется установщиком")
     managed = old.get("files", {})
     for rel, h in managed.items():
@@ -174,11 +176,24 @@ def _install_locked(bundle, root, launcher, manifest, replace_options, log, down
                 else:
                     log(f"Сохранён изменённый пользователем файл: {rel}")
         installed_version = None
-        if launcher != "prism":
-            prepared_runtime = prepare_runtime(manifest, staging, game, log)
+        if launcher not in ('prism','multimc'):
+            prepared_runtime = prepare_runtime(manifest, staging, root if launcher == 'minecraft' else game, log)
             installed_version = prepared_runtime.version_id
             operations.extend(prepared_runtime.files)
-        if launcher == "prism":
+        if launcher == 'minecraft':
+            profile_files = [f for f in ('launcher_profiles.json','launcher_profiles_microsoft_store.json') if (root/f).exists()]
+            for filename in profile_files or ['launcher_profiles.json']:
+                profile_path = target_path(root,filename)
+                data = json.loads(profile_path.read_text('utf-8')) if profile_path.exists() else {'profiles':{}}
+                if not isinstance(data,dict) or not isinstance(data.get('profiles',{}),dict):
+                    raise PackError('Повреждён файл профилей Minecraft Launcher')
+                data.setdefault('profiles',{})['packforge-'+manifest['id']] = {
+                    'name':manifest['name'], 'type':'custom', 'lastVersionId':installed_version,
+                    'gameDir':str(game)}
+                prepared_profile = staging / filename
+                prepared_profile.write_bytes(json_bytes(data))
+                operations.append((profile_path,prepared_profile))
+        if launcher in ('prism','multimc'):
             meta = staging / "mmc-pack.json"
             meta.write_bytes(json_bytes(manifest["components"]))
             operations.append((target_path(root, "mmc-pack.json"), meta))

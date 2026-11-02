@@ -44,6 +44,14 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIsNone(result.recommended_launcher)
         self.assertIsNone(result.recommended_update)
 
+    def test_additional_launcher_executables_and_multimc_config(self):
+        multi = self.launcher('MultiMC.exe', self.home/'MultiMC')
+        (multi.parent/'multimc.cfg').write_text('[General]\nInstanceDir=my-instances\n')
+        official = self.launcher('MinecraftLauncher.exe', self.local/'Programs/Minecraft Launcher')
+        found = self.detect(portable_paths=[multi,official])
+        self.assertEqual([x.kind for x in found],['multimc','minecraft'])
+        self.assertEqual(found[0].instances_dir,multi.parent/'my-instances')
+
     def test_only_installed_launchers_in_priority_order(self):
         self.launcher("TLauncher.exe")
         self.assertEqual([x.kind for x in self.detect()], ["tlauncher"])

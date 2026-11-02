@@ -15,11 +15,13 @@ class PrismInstance:
 def list_instances(extra_roots=(), launchers=None, appdata=None):
     app = appdata or Path(os.environ.get('APPDATA', str(Path.home() / 'AppData/Roaming')))
     roots = [_prism_instances(app / 'PrismLauncher')]
+    roots.append(_prism_instances(app / 'MultiMC','multimc.cfg'))
     for launcher in detect_launchers() if launchers is None else launchers:
-        if launcher.kind == 'prism' and launcher.instances_dir:
+        if launcher.kind in ('prism','multimc') and launcher.instances_dir:
             roots.append(launcher.instances_dir)
     for root in map(Path, extra_roots):
-        roots.append(_prism_instances(root) if (root / 'prismlauncher.cfg').is_file()
+        roots.append(_prism_instances(root,'multimc.cfg') if (root/'multimc.cfg').is_file()
+                     else _prism_instances(root) if (root / 'prismlauncher.cfg').is_file()
                      else root / 'instances' if (root / 'instances').is_dir() else root)
     found = {}
     for root in roots:

@@ -28,11 +28,12 @@ def slug(value: str) -> str:
 
 def export_pack(instance: Path, output: Path, *, pack_id: str, name: str,
                 version: str, curseforge_key: str = "",
-                resolver=None, log=print) -> Path:
+                resolver=None, log=print, minecraft=None, loader=None, loader_version=None) -> Path:
     instance = instance.resolve()
     if not name.strip() or not version.strip():
         raise PackError("Название и версия сборки обязательны")
-    components = json.loads((instance / "mmc-pack.json").read_text("utf-8"))
+    from .sources import read_source
+    game, components = read_source(instance, minecraft, loader, loader_version)
     minecraft = next((c["version"] for c in components["components"]
                       if c["uid"] == "net.minecraft"), None)
     if not minecraft:
@@ -42,10 +43,6 @@ def export_pack(instance: Path, output: Path, *, pack_id: str, name: str,
                                       "net.fabricmc.intermediary", "org.quiltmc.quilt-mappings"}]
     if unsupported or (instance / "patches").exists() or (instance / "jarmods").exists():
         raise PackError(f"Пользовательские компоненты/патчи пока не поддерживаются: {unsupported}")
-    roots = [instance / "minecraft", instance / ".minecraft"]
-    game = next((p for p in roots if p.is_dir()), None)
-    if game is None:
-        raise PackError("Не найдена папка minecraft или .minecraft внутри экземпляра Prism")
     if game.is_symlink() or (hasattr(game, "is_junction") and game.is_junction()):
         raise PackError("Папка игры не должна быть ссылкой")
     candidates = []

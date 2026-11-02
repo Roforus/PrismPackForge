@@ -20,12 +20,15 @@ def main():
     export.add_argument("--output", type=Path, required=True, help="Путь к .pack.zip")
     export.add_argument("--include-options", action="store_true", help=argparse.SUPPRESS)
     export.add_argument("--exe", type=Path, help="Дополнительно собрать Windows EXE по этому пути")
+    export.add_argument('--minecraft', help='Версия игры для обычной игровой папки')
+    export.add_argument('--loader', choices=['Vanilla','Fabric','Forge','NeoForge','Quilt'])
+    export.add_argument('--loader-version', help='Точная версия загрузчика для игровой папки')
     build = commands.add_parser("build", help="Собрать EXE из готового pack.zip")
     build.add_argument("bundle", type=Path)
     build.add_argument("--output", type=Path, required=True)
     installer = commands.add_parser("install", help="Установить или обновить сборку")
     installer.add_argument("bundle", type=Path)
-    installer.add_argument("--launcher", choices=["prism", "legacy", "tlauncher"], required=True)
+    installer.add_argument("--launcher", choices=["prism", "legacy", "tlauncher", "multimc", "minecraft"], required=True)
     installer.add_argument("--destination", type=Path, required=True)
     installer.add_argument("--replace-options", action="store_true")
     gui = commands.add_parser("installer", help="Открыть графический установщик для pack.zip")
@@ -38,7 +41,8 @@ def main():
         elif args.command == "export":
             from .exporter import build_exe, export_pack
             bundle = export_pack(args.instance, args.output, pack_id=args.pack_id, name=args.name,
-                                 version=args.version,
+                                 version=args.version, minecraft=args.minecraft, loader=args.loader,
+                                 loader_version=args.loader_version,
                                  curseforge_key=os.environ.get("CURSEFORGE_API_KEY", ""))
             if args.exe:
                 build_exe(bundle, args.exe)
