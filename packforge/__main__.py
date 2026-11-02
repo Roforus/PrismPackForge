@@ -14,7 +14,7 @@ def main():
     commands = parser.add_subparsers(dest="command")
     export = commands.add_parser("export", help="Экспортировать экземпляр Prism")
     export.add_argument("instance", type=Path)
-    export.add_argument("--id", required=True, dest="pack_id")
+    export.add_argument("--id", dest="pack_id",help='Заменить ID, сохранённый в исходной сборке')
     export.add_argument("--name", required=True)
     export.add_argument("--version", required=True)
     export.add_argument("--output", type=Path, required=True, help="Путь к .pack.zip")

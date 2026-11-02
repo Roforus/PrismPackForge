@@ -26,10 +26,12 @@ def slug(value: str) -> str:
     return result
 
 
-def export_pack(instance: Path, output: Path, *, pack_id: str, name: str,
+def export_pack(instance: Path, output: Path, *, pack_id: str | None = None, name: str,
                 version: str, curseforge_key: str = "",
                 resolver=None, log=print, minecraft=None, loader=None, loader_version=None) -> Path:
     instance = instance.resolve()
+    from .source_identity import source_id, save_source_id, validate_id
+    pack_id = validate_id(pack_id) if pack_id else source_id(instance)
     if not name.strip() or not version.strip():
         raise PackError("Название и версия сборки обязательны")
     from .sources import read_source
@@ -77,7 +79,8 @@ def export_pack(instance: Path, output: Path, *, pack_id: str, name: str,
             "Файлы не найдены на Modrinth/CurseForge или запрещена прямая загрузка. "
             "Для CurseForge задайте CURSEFORGE_API_KEY. JAR в установщик не встраиваются."}))
         raise PackError(f"Не найдены ссылки для {len(unresolved)} файлов. Отчёт: {report}")
-    manifest = {"format": 1, "id": slug(pack_id), "name": name.strip(), "version": version.strip(),
+    save_source_id(instance,pack_id)
+    manifest = {"format": 1, "id": pack_id, "name": name.strip(), "version": version.strip(),
                 "minecraft": minecraft, "components": components,
                 "loaders": [{"name": LOADERS[c["uid"]], "version": c["version"]}
                             for c in components["components"] if c["uid"] in LOADERS], "files": []}
