@@ -95,7 +95,7 @@ class PackTests(unittest.TestCase):
         profiles = self.destination/'launcher_profiles.json'
         profiles.write_text(json.dumps({'profiles':{'existing':{'name':'Existing'}},'settings':{'custom':True}}))
         self.install('minecraft')
-        updated = json.loads(profiles.read_text())
+        updated = json.loads(profiles.read_text(encoding='utf-8'))
         self.assertEqual(updated['profiles']['existing'],{'name':'Existing'})
         self.assertEqual(updated['settings'],{'custom':True})
         self.assertEqual(updated['profiles']['packforge-test']['lastVersionId'],'fabric-loader-0.16.9-1.20.1')
