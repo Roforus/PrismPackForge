@@ -5,6 +5,8 @@
 | Файл | Назначение |
 | --- | --- |
 | `packforge/ui.py` | Графический экспортёр, выбор Prism-сборки и сохранение параметров |
+| `packforge/sources.py` | Нормализация Prism/MultiMC и обычной игровой папки |
+| `packforge/appearance.py` | Светлая/тёмная тема и сохранение оформления |
 | `packforge/exporter.py` | Поиск файлов экземпляра, манифест и сборка установщика |
 | `packforge/providers.py` | Поиск точных файлов Modrinth/CurseForge по хешам |
 | `packforge/installer.py` | Подготовка файлов, обновление, резервное копирование и откат |

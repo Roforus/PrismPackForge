@@ -1,5 +1,15 @@
 # Prism Pack Forge
 
+В версии 0.2 также доступны экспорт из MultiMC и произвольной игровой папки, установка в MultiMC и официальный Minecraft Launcher, переключатель темы. Актуальная матрица совместимости и особенности этих режимов приведены в [README](../README.md).
+
+Пример экспорта папки из другого лаунчера:
+
+```powershell
+python -m packforge export "D:\CurseForge\Instances\MyPack" --minecraft 1.21.1 --loader NeoForge --loader-version 21.1.1 --id my-pack --name "Моя сборка" --version 1.0.0 --output "dist\my-pack.pack.zip" --exe "dist\my-pack-setup.exe"
+python -m packforge install "dist\my-pack.pack.zip" --launcher minecraft --destination "$env:APPDATA\.minecraft"
+python -m packforge install "dist\my-pack.pack.zip" --launcher multimc --destination "D:\MultiMC\instances\my-pack"
+```
+
 Python-утилита для экспорта экземпляра Prism Launcher в Windows EXE установщик модовой сборки. Интерфейс на русском, доступен CLI.
 
 ## Быстрый запуск

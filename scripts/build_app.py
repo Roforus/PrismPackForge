@@ -11,9 +11,10 @@ def main():
     template_entry = build / "installer_entry.py"
     template_entry.write_text("from packforge.installer_ui import main\nmain()\n", encoding="utf-8")
     app_entry = build / "app_entry.py"
-    app_entry.write_text("from packforge.__main__ import main\nmain()\n", encoding="utf-8")
+    app_entry.write_text("from packforge.__main__ import main\nraise SystemExit(main())\n", encoding="utf-8")
     common = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
-              "--paths", str(repo), "--collect-data", "minecraft_launcher_lib", "--specpath", str(build)]
+              "--paths", str(repo), "--collect-data", "minecraft_launcher_lib", "--specpath", str(build),
+              '--add-data', f"{repo / 'LICENSE'};."]
     subprocess.run(common + ["--name", "installer-template", "--distpath", str(build),
                             "--workpath", str(build / "template-work"), str(template_entry)], check=True)
     subprocess.run(common + ["--name", "PrismPackForge", "--distpath", str(repo / "dist"),

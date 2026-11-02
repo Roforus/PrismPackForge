@@ -1,10 +1,12 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "prism-pack-forge"
-version = "0.1.0"
+version = "0.2.0"
+license = "MIT"
+readme = "README.md"
 description = "Export Prism instances as small Minecraft modpack installers"
 requires-python = ">=3.11"
 dependencies = ["minecraft-launcher-lib>=8.0,<9", "truststore>=0.10,<1", "certifi>=2026.7.22"]
@@ -14,6 +16,9 @@ build = ["pyinstaller>=6.11,<7"]
 
 [project.scripts]
 packforge = "packforge.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/Roforus/PrismPackForge"
 
 [tool.setuptools.packages.find]
 include = ["packforge*"]
