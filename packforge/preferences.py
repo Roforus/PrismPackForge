@@ -18,9 +18,9 @@ def load_settings(path=None):
 
 def save_settings(data, path=None):
     # Explicit whitelist: never persist credentials or arbitrary widget contents.
-    clean = {k: data[k] for k in ('last_instance', 'prism_roots') if k in data}
+    clean = {k: data[k] for k in ('last_instance', 'prism_roots','game_roots') if k in data}
     clean['profiles'] = {key: {k: value[k] for k in
-        ('pack_id', 'name', 'version', 'output', 'include_options', 'make_exe') if k in value}
+        ('pack_id', 'name', 'version', 'output', 'include_options', 'make_exe','minecraft','loader','loader_version') if k in value}
         for key, value in data.get('profiles', {}).items() if isinstance(value, dict)}
     path = path or settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)

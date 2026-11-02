@@ -13,16 +13,37 @@ from .exporter import build_exe, export_pack
 
 class Window:
     def __init__(self, title: str):
+        from .appearance import load_theme
         self.root = tk.Tk()
         self.root.title(title)
         self.root.geometry("820x670")
         self.root.minsize(720, 600)
+        self.theme = load_theme()
+        topbar = ttk.Frame(self.root, padding=(10,4))
+        topbar.pack(fill='x')
+        self.theme_button = ttk.Button(topbar,text='Тёмная тема',command=self.toggle_theme)
+        self.theme_button.pack(side='right')
         self.frame = ttk.Frame(self.root, padding=20)
         self.frame.pack(fill="both", expand=True)
         self.frame.columnconfigure(1, weight=1)
         self.events = queue.Queue()
         self.busy = False
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.after_idle(self.apply_appearance)
+
+    def apply_appearance(self):
+        from .appearance import apply_theme
+        apply_theme(self.root,self.theme)
+        self.theme_button.configure(text='Светлая тема' if self.theme == 'dark' else 'Тёмная тема')
+
+    def toggle_theme(self):
+        from .appearance import save_theme
+        self.theme = 'dark' if self.theme == 'light' else 'light'
+        self.apply_appearance()
+        try:
+            save_theme(self.theme)
+        except OSError:
+            pass
 
     def close(self):
         if self.busy:
@@ -99,11 +120,11 @@ def main():
         prism_roots = []
     prism_roots = [p for p in prism_roots if isinstance(p, str)]
     window = Window("Prism Pack Forge — экспорт сборки")
-    ttk.Label(window.frame, text="Экспорт сборки из Prism", font=("Segoe UI", 18, "bold")).grid(
+    ttk.Label(window.frame, text="Экспорт модовой сборки", font=("Segoe UI", 18, "bold")).grid(
         row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
     instance = tk.StringVar()
     selected = tk.StringVar()
-    ttk.Label(window.frame, text="Сборка в Prism").grid(row=1, column=0, sticky='w')
+    ttk.Label(window.frame, text="Сборка / игровая папка").grid(row=1, column=0, sticky='w')
     selector = ttk.Combobox(window.frame, textvariable=selected, state='readonly')
     selector.grid(row=1, column=1, columnspan=2, sticky='ew', padx=10, pady=7)
     toolbar = ttk.Frame(window.frame)
@@ -113,22 +134,29 @@ def main():
     version = window.field(5, "Версия сборки", "1.0.0")
     output = window.field(6, "Папка результата", str(Path.cwd() / "dist"), browse=directory)
     key = window.field(7, "CurseForge API key", os.environ.get("CURSEFORGE_API_KEY", ""), secret=True)
+    mc = window.field(8,'Minecraft (для игровой папки)')
+    loader_version = window.field(9,'Версия модлоадера')
+    ttk.Label(window.frame,text='Модлоадер (для игровой папки)').grid(row=10,column=0,sticky='w')
+    loader = tk.StringVar(value='')
+    ttk.Combobox(window.frame,textvariable=loader,state='readonly',
+        values=['Vanilla','Fabric','Forge','NeoForge','Quilt']).grid(row=10,column=1,sticky='ew',padx=10)
     exe = tk.BooleanVar(value=True)
     ttk.Label(window.frame, text="options.txt всегда включается и применяется при первой установке").grid(
-        row=8, column=0, columnspan=3, sticky="w", pady=5)
+        row=11, column=0, columnspan=3, sticky="w", pady=5)
     ttk.Checkbutton(window.frame, text="Собрать EXE установщик", variable=exe).grid(
-        row=9, column=0, columnspan=3, sticky="w", pady=5)
+        row=12, column=0, columnspan=3, sticky="w", pady=5)
     ttk.Label(window.frame, text="ID сохраняйте между обновлениями. Параметры запоминаются отдельно для каждой сборки.\n"
               "Экспортируются моды, конфиги, скрипты, ресурсы и шейдеры; миры и аккаунты не включаются.",
-              wraplength=750).grid(row=10, column=0, columnspan=3, sticky="w", pady=6)
+              wraplength=750).grid(row=13, column=0, columnspan=3, sticky="w", pady=6)
     available = {}
 
     def remember():
         if instance.get():
             profiles[instance.get()] = dict(pack_id=pack_id.get(), name=name.get(), version=version.get(),
-                output=output.get(), make_exe=exe.get())
+                output=output.get(), make_exe=exe.get(),minecraft=mc.get(),loader=loader.get(),loader_version=loader_version.get())
         try:
-            save_settings(dict(last_instance=instance.get(), prism_roots=prism_roots, profiles=profiles))
+            save_settings(dict(last_instance=instance.get(), prism_roots=prism_roots,
+                               game_roots=settings.get('game_roots',[]),profiles=profiles))
         except OSError as exc:
             window.events.put(('log', f'Не удалось сохранить параметры: {exc}'))
 
@@ -153,6 +181,9 @@ def main():
                 (version,'version','1.0.0'),(output,'output',str(Path.cwd()/'dist'))):
             variable.set(saved.get(field,default))
         exe.set(saved.get('make_exe',True) is True)
+        mc.set(saved.get('minecraft',''))
+        loader.set(saved.get('loader',''))
+        loader_version.set(saved.get('loader_version',''))
         remember()
 
     def refresh(preferred=None):
@@ -162,6 +193,10 @@ def main():
         available.clear()
         for found in list_instances(prism_roots):
             available[f'{found.name} — {found.path}'] = found
+        from .prism_instances import PrismInstance
+        for path in settings.get('game_roots',[]):
+            if isinstance(path,str) and Path(path).is_dir():
+                available[f'Игровая папка: {Path(path).name} — {path}'] = PrismInstance(Path(path),Path(path).name)
         selector.configure(values=list(available))
         label = next((k for k,v in available.items() if str(v.path)==previous), next(iter(available),''))
         selected.set(label)
@@ -184,6 +219,17 @@ def main():
     selector.bind('<<ComboboxSelected>>',choose)
     ttk.Button(toolbar,text='Обновить список',command=refresh).pack(side='left',padx=4)
     ttk.Button(toolbar,text='Указать папку Prism…',command=add_root).pack(side='left',padx=4)
+    def add_game():
+        if window.busy:
+            return
+        folder = filedialog.askdirectory(title='Игровая папка из CurseForge, Modrinth App или другого лаунчера (с mods и options.txt)')
+        if folder:
+            remember()
+            roots = settings.setdefault('game_roots',[])
+            if folder not in roots:
+                roots.append(folder)
+            refresh(folder)
+    ttk.Button(toolbar,text='Игровая папка другого лаунчера…',command=add_game).pack(side='left',padx=4)
 
     def start():
         from .exporter import slug
@@ -191,7 +237,8 @@ def main():
             if not instance.get().strip() or not output.get().strip():
                 raise ValueError("Укажите папку экземпляра и папку результата")
             values = dict(instance=Path(instance.get()), pack_id=slug(pack_id.get()), name=name.get(),
-                          version=version.get(), curseforge_key=key.get())
+                          version=version.get(), curseforge_key=key.get(),minecraft=mc.get(),
+                          loader=loader.get(),loader_version=loader_version.get())
             folder = Path(output.get())
             make_exe = exe.get()
         except Exception as exc:
@@ -205,13 +252,13 @@ def main():
         remember()
         window.run_task(task)
 
-    window.finish_layout(11, "Экспортировать сборку", start)
+    window.finish_layout(14, "Экспортировать сборку", start)
     close = window.close
     def close_exporter():
         if not window.busy:
             remember()
         close()
     window.root.protocol('WM_DELETE_WINDOW',close_exporter)
-    window.root.geometry('950x760')
+    window.root.geometry('1000x900')
     refresh()
     window.root.mainloop()
