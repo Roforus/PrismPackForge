@@ -11,7 +11,7 @@ class DiscoveryTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.home = Path(self.tmp.name)
+        self.home = Path(self.tmp.name).resolve()
         self.app = self.home / "AppData/Roaming"
         self.local = self.home / "AppData/Local"
         self.env = {"APPDATA": str(self.app), "LOCALAPPDATA": str(self.local), "PATH": ""}

@@ -17,7 +17,7 @@ class ExportUiTests(unittest.TestCase):
             self.skipTest('Tk display is unavailable')
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        root = Path(self.tmp.name)
+        root = Path(self.tmp.name).resolve()
         self.items = [PrismInstance(root/'prism','Prism pack','prism'),
                       PrismInstance(root/'multimc','MultiMC pack','multimc')]
         for name,value in [('load_settings',{}),('list_instances',self.items)]:

@@ -21,7 +21,7 @@ class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()
         self.game = self.root / "game"
         self.game.mkdir()
         self.staging = self.root / "stage"
