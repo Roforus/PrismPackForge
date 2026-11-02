@@ -9,12 +9,27 @@ def appearance_path():
     return Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'.local/share'))) / 'PrismPackForge/appearance.json'
 
 
-def load_theme():
+def system_theme():
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize') as key:
+            return 'light' if winreg.QueryValueEx(key,'AppsUseLightTheme')[0] else 'dark'
+    except (ImportError,OSError):
+        return 'light'
+
+
+def load_theme_mode():
     try:
         theme = json.loads(appearance_path().read_text('utf-8')).get('theme')
-        return theme if theme in ('light','dark') else 'light'
+        return theme if theme in ('light','dark','system') else 'system'
     except (OSError,ValueError,AttributeError):
-        return 'light'
+        return 'system'
+
+
+def load_theme():
+    mode = load_theme_mode()
+    return system_theme() if mode == 'system' else mode
 
 
 def save_theme(theme):

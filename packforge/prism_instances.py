@@ -10,21 +10,23 @@ from .discovery import detect_launchers, _prism_instances
 class PrismInstance:
     path: Path
     name: str
+    launcher: str = 'prism'
 
 
 def list_instances(extra_roots=(), launchers=None, appdata=None):
     app = appdata or Path(os.environ.get('APPDATA', str(Path.home() / 'AppData/Roaming')))
-    roots = [_prism_instances(app / 'PrismLauncher')]
-    roots.append(_prism_instances(app / 'MultiMC','multimc.cfg'))
+    roots = [(_prism_instances(app / 'PrismLauncher'),'prism')]
+    roots.append((_prism_instances(app / 'MultiMC','multimc.cfg'),'multimc'))
     for launcher in detect_launchers() if launchers is None else launchers:
         if launcher.kind in ('prism','multimc') and launcher.instances_dir:
-            roots.append(launcher.instances_dir)
+            roots.append((launcher.instances_dir,launcher.kind))
     for root in map(Path, extra_roots):
-        roots.append(_prism_instances(root,'multimc.cfg') if (root/'multimc.cfg').is_file()
+        path = (_prism_instances(root,'multimc.cfg') if (root/'multimc.cfg').is_file()
                      else _prism_instances(root) if (root / 'prismlauncher.cfg').is_file()
                      else root / 'instances' if (root / 'instances').is_dir() else root)
+        roots.append((path,'multimc' if (root/'multimc.cfg').is_file() else 'prism'))
     found = {}
-    for root in roots:
+    for root,kind in roots:
         try:
             candidates = [root] if (root / 'mmc-pack.json').is_file() else list(root.iterdir())
         except OSError:
@@ -39,5 +41,5 @@ def list_instances(extra_roots=(), launchers=None, appdata=None):
                 name = config.get('General', 'name', fallback=name)
             except (OSError, configparser.Error, UnicodeError):
                 pass
-            found[str(instance.resolve()).casefold()] = PrismInstance(instance.resolve(), name)
+            found.setdefault(str(instance.resolve()).casefold(),PrismInstance(instance.resolve(), name,kind))
     return sorted(found.values(), key=lambda x: (x.name.casefold(), str(x.path)))

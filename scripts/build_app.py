@@ -1,11 +1,15 @@
 """Build a standalone exporter with its installer template (Windows)."""
 import subprocess
 import sys
+import argparse
 from pathlib import Path
 
 
 def main():
     repo = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(description='Build the standalone Windows exporter')
+    parser.add_argument('--output-dir',type=Path,default=repo/'dist')
+    output = parser.parse_args().output_dir.resolve()
     build = repo / "build/app"
     build.mkdir(parents=True, exist_ok=True)
     template_entry = build / "installer_entry.py"
@@ -17,10 +21,10 @@ def main():
               '--add-data', f"{repo / 'LICENSE'};."]
     subprocess.run(common + ["--name", "installer-template", "--distpath", str(build),
                             "--workpath", str(build / "template-work"), str(template_entry)], check=True)
-    subprocess.run(common + ["--name", "PrismPackForge", "--distpath", str(repo / "dist"),
+    subprocess.run(common + ["--name", "PrismPackForge", "--distpath", str(output),
                             "--workpath", str(build / "app-work"), "--add-data",
                             f"{build / 'installer-template.exe'};.", str(app_entry)], check=True)
-    print(repo / "dist/PrismPackForge.exe")
+    print(output / "PrismPackForge.exe")
 
 
 if __name__ == "__main__":
