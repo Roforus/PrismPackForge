@@ -1,5 +1,9 @@
 # Prism Pack Forge
 
+**[Скачать готовый EXE для Windows](https://github.com/Roforus/PrismPackForge/releases/latest/download/PrismPackForge.exe)** · [Релизы и список изменений](https://github.com/Roforus/PrismPackForge/releases)
+
+Скачайте `PrismPackForge.exe` и запустите его — Python и PyInstaller устанавливать не нужно. В релизе также доступен файл SHA-256 для проверки загрузки. EXE не подписан, поэтому Windows может показать предупреждение о неизвестном издателе.
+
 Экспорт модовых сборок из **Prism Launcher** в автономные Windows EXE установщики для **Prism, Legacy Launcher и TLauncher**.
 
 Версия **0.2** расширяет экспорт на **MultiMC** и обычные игровые папки из **CurseForge, Modrinth App и других Java-лаунчеров**. Дополнительные цели установки: **MultiMC** и **официальный Minecraft Launcher**.
