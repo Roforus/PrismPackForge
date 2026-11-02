@@ -1,0 +1,52 @@
+name: Build Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing draft release tag
+        required: true
+        default: v0.2.0
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install build dependencies
+        run: python -m pip install -e ".[build]"
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Build exporter and installer template
+        run: python scripts/build_app.py
+      - name: Create checksum
+        shell: pwsh
+        run: |
+          $checksum = (Get-FileHash -LiteralPath dist/PrismPackForge.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$checksum  PrismPackForge.exe" | Set-Content -LiteralPath dist/PrismPackForge.exe.sha256 -Encoding ascii
+      - name: Upload files to draft release and publish
+        shell: pwsh
+        run: |
+          $releases = gh api "repos/$env:GITHUB_REPOSITORY/releases" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read releases' }
+          $release = $releases | Where-Object { $_.tag_name -eq $env:RELEASE_TAG }
+          if (-not $release -or -not $release.draft) { throw 'Expected an existing draft release' }
+          gh release upload "$env:RELEASE_TAG" dist/PrismPackForge.exe dist/PrismPackForge.exe.sha256 --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed' }
+          gh release edit "$env:RELEASE_TAG" --draft=false --latest --target "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
